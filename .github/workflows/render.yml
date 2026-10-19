@@ -1,0 +1,47 @@
+name: Render images from sheet
+
+# 구글 시트 '이미지' 탭의 HTML을 PNG로 그려 이 저장소에 저장합니다.
+# 매시간 확인하며, 새로 그릴 것이 없으면 바로 끝납니다. 수동 실행도 가능합니다.
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wholphin-render
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      IMAGES_SHEET_CSV_URL: "https://docs.google.com/spreadsheets/d/1-yqJedpzlmgt-0S0vFbdsxPkTnOTYqJVPcTKAqO7zjM/export?format=csv&gid=150509472"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 그릴 이미지 확인
+        id: plan
+        run: python3 tools/render_sheet.py plan
+
+      - name: 서체·브라우저 준비
+        if: steps.plan.outputs.count != '0'
+        run: |
+          npm install --no-save @fontsource/archivo@5.3.0 @fontsource/instrument-serif@5.3.0
+          pip install playwright==1.47.0
+          python3 -m playwright install --with-deps chromium
+
+      - name: 이미지 그리기
+        if: steps.plan.outputs.count != '0'
+        run: python3 tools/render_sheet.py
+
+      - name: 저장
+        if: steps.plan.outputs.count != '0'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A -- . ':!node_modules'
+          git diff --cached --quiet || { git commit -m "Render images from sheet"; git push; }
