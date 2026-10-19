@@ -43,5 +43,5 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A -- . ':!node_modules'
+          git add -A
           git diff --cached --quiet || { git commit -m "Render images from sheet"; git push; }
